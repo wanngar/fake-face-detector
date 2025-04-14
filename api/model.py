@@ -1,6 +1,8 @@
 import os
-from ultralytics import YOLO
+from typing import Any
 
+import numpy as np
+from ultralytics import YOLO
 
 
 class FaceDetector:
@@ -20,24 +22,15 @@ class FaceDetector:
     """
 
     def __init__(self, weights_path: str):
-        """Инициализирует детектор с указанными весами модели.
-
-        Args:
-            weights_path (str): Путь к файлу с весами модели (.pt).
-
-        Raises:
-            FileNotFoundError: Если файл с весами не существует.
-            RuntimeError: Если не удалось загрузить модель.
-        """
         if not os.path.exists(weights_path):
             raise FileNotFoundError(f"Файл с весами '{weights_path}' не найден.")
 
         try:
-            self.model = YOLO(weights_path)
+            self._model = YOLO(weights_path)
         except Exception as e:
             raise RuntimeError(f"Ошибка загрузки модели: {str(e)}")
 
-    def img_predict(self, img_path: str) -> str:
+    def img_predict(self, img_path: np.ndarray[Any, np.dtype]) -> str:
         """Предсказывает класс лица на изображении (real/fake) и возвращает результат.
 
         Args:
@@ -57,13 +50,9 @@ class FaceDetector:
             >>> detector.img_predict("person.jpg")
             'Класс: fake, Вероятность: 87.33%'
         """
-        if not os.path.exists(img_path):
-            raise FileNotFoundError(f"Изображение '{img_path}' не найдено.")
-
         try:
-            result = self.model.predict(img_path, verbose=False)
+            result = self._model.predict(img_path, verbose=False)
 
-            # Проверка, что модель вернула валидный результат
             if not hasattr(result[0], 'probs'):
                 raise ValueError("Модель не вернула вероятности классов (возможно, некорректные веса).")
 
