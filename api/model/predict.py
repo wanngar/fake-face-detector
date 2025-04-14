@@ -1,26 +1,19 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, APIRouter
 from fastapi.responses import JSONResponse
 from PIL import Image, UnidentifiedImageError
 import io
 import numpy as np
 from typing import Dict
-from backend.api.model import FaceDetector
+from .model import FaceDetector
+from time import perf_counter
 
-app = FastAPI(
-    title="Fake Face Detector API",
-    description="API для определения фейковых лиц с помощью YOLO модели"
-)
+router = APIRouter(tags=['Model'])
 
-MODEL_PATH = "weights/weights_v1.pt"
+MODEL_PATH = "model/weights/weights_v1.pt"
 detector = FaceDetector(MODEL_PATH)
 
 
-@app.get("/")
-def health_check():
-    return {"status": "OK"}
-
-
-@app.post("/predict/")
+@router.post("/predict/")
 async def predict(file: UploadFile = File(...)) -> JSONResponse:
     """
         Анализирует изображение на наличие фейковых лиц с помощью YOLO модели
@@ -59,6 +52,7 @@ async def predict(file: UploadFile = File(...)) -> JSONResponse:
                 "error": "Файл должен быть изображением"
             }
         """
+    start_time = perf_counter()
     # Проверка типа файла
     if file.content_type not in ["image/jpeg", "image/png"]:
         raise HTTPException(
@@ -102,11 +96,12 @@ async def predict(file: UploadFile = File(...)) -> JSONResponse:
 
         # Обработка изображения моделью
         detections = detector.img_predict(image_np)
-
+        processing_time = perf_counter() - start_time
         return JSONResponse(
             content={
                 "status": "success",
-                "result": detections
+                "result": detections,
+                "processing_time_sec": round(processing_time, 3)
             }
         )
 
@@ -117,3 +112,4 @@ async def predict(file: UploadFile = File(...)) -> JSONResponse:
             status_code=500,
             detail="Внутренняя ошибка сервера при обработке изображения"
         )
+

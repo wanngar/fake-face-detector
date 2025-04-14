@@ -1,6 +1,5 @@
 import os
 from typing import Any
-
 import numpy as np
 from ultralytics import YOLO
 
@@ -15,7 +14,7 @@ class FaceDetector:
         model (YOLO): Загруженная модель YOLO для предсказания.
 
     Example:
-        >>> detector = FaceDetector(weights_path="weights_v1.pt")
+        >>> detector = FaceDetector(weights_path="weights/weights_v1.pt")
         >>> result = detector.img_predict("face.jpg")
         >>> print(result)
         Класс: real, Вероятность: 99.50%
