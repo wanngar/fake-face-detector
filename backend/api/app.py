@@ -4,16 +4,14 @@ from PIL import Image, UnidentifiedImageError
 import io
 import numpy as np
 from typing import Dict
-from model import FaceDetector
-from time import perf_counter
-
+from backend.api.model import FaceDetector
 
 app = FastAPI(
     title="Fake Face Detector API",
     description="API для определения фейковых лиц с помощью YOLO модели"
 )
 
-MODEL_PATH = "./weights/weights_v1.pt"
+MODEL_PATH = "weights/weights_v1.pt"
 detector = FaceDetector(MODEL_PATH)
 
 
