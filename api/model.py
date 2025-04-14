@@ -30,7 +30,7 @@ class FaceDetector:
         except Exception as e:
             raise RuntimeError(f"Ошибка загрузки модели: {str(e)}")
 
-    def img_predict(self, img_path: np.ndarray[Any, np.dtype]) -> str:
+    def img_predict(self, img_path: np.ndarray[Any, np.dtype]) -> dict[str:str]:
         """Предсказывает класс лица на изображении (real/fake) и возвращает результат.
 
         Args:
@@ -60,7 +60,7 @@ class FaceDetector:
             class_name = result[0].names[class_index]
             confidence = result[0].probs.top1conf.item()
 
-            return f"Класс: {class_name}, Вероятность: {confidence:.2%}"
+            return {"class": f"{class_name}", "prob": f"{confidence:.2%}"}
 
         except Exception as e:
             raise RuntimeError(f"Ошибка предсказания: {str(e)}")

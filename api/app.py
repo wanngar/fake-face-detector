@@ -1,9 +1,12 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from model import FaceDetector
-from typing import Dict, Any
-import numpy as np
-from PIL import Image
+from fastapi.responses import JSONResponse
+from PIL import Image, UnidentifiedImageError
 import io
+import numpy as np
+from typing import Dict
+from model import FaceDetector
+from time import perf_counter
+
 
 app = FastAPI(
     title="Fake Face Detector API",
@@ -19,27 +22,100 @@ def health_check():
     return {"status": "OK"}
 
 
-@app.post("/detect/")
-async def detect_fake_faces(file: UploadFile = File(...)) -> Dict[str, Any]:
+@app.post("/predict/")
+async def predict(file: UploadFile = File(...)) -> JSONResponse:
     """
-    Эндпоинт для анализа изображения на наличие фейковых лиц
+        Анализирует изображение на наличие фейковых лиц с помощью YOLO модели
 
-    :arg:
-    - file: изображение в формате JPEG/PNG
+        Args:
+            file (UploadFile): Загружаемое изображение в формате JPEG/PNG (макс. 10MB)
 
-    :returns:
-    - original_image: исходное изображение в байтах
-    - detections: список обнаруженных лиц с метками и уверенностью
-    """
+        Returns:
+            Dict[str, Any]: JSON-ответ с результатами анализа:
+            {
+                "status": "success"|"error",
+                "result": {
+                    "class": "real"|"fake",  # Класс изображения
+                    "prob": "XX.XX%"          # Уверенность модели в процентах
+                },
+                "error": str                  # Описание ошибки (при status="error")
+            }
+
+        Raises:
+            HTTPException: 400 если файл не изображение/большой размер
+            HTTPException: 500 при внутренних ошибках обработки
+
+        Example:
+            >>> Успешный ответ:
+            {
+                "status": "success",
+                "result": {
+                    "class": "fake",
+                    "prob": "99.95%"
+                }
+            }
+
+            >>> Ответ с ошибкой:
+            {
+                "status": "error",
+                "error": "Файл должен быть изображением"
+            }
+        """
+    # Проверка типа файла
+    if file.content_type not in ["image/jpeg", "image/png"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Поддерживаются только JPEG/PNG изображения"
+        )
+
     try:
+        # Чтение и проверка размера файла
         image_bytes = await file.read()
-        image = Image.open(io.BytesIO(image_bytes))
-        image_np = np.array(image)
+        if len(image_bytes) > 10_000_000:  # 10MB лимит
+            raise HTTPException(
+                status_code=400,
+                detail="Размер файла превышает 10MB"
+            )
+
+        # Проверка сигнатуры файла
+        if not (image_bytes.startswith(b'\xff\xd8') or  # JPEG
+                image_bytes.startswith(b'\x89PNG')):  # PNG
+            raise HTTPException(
+                status_code=400,
+                detail="Некорректный формат изображения"
+            )
+
+        try:
+            # Загрузка изображения
+            image = Image.open(io.BytesIO(image_bytes))
+            image_np = np.array(image)
+
+            # Проверка на 3 канала (RGB)
+            if len(image_np.shape) != 3 or image_np.shape[2] != 3:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Изображение должно быть в цветном формате (RGB)"
+                )
+        except UnidentifiedImageError:
+            raise HTTPException(
+                status_code=400,
+                detail="Невозможно прочитать изображение"
+            )
+
+        # Обработка изображения моделью
         detections = detector.img_predict(image_np)
 
-        return {
-            "detections": detections,
-            "message": "Анализ завершен успешно"
-        }
+        return JSONResponse(
+            content={
+                "status": "success",
+                "result": detections
+            }
+        )
+
+    except HTTPException:
+        raise  # Пробрасываем уже обработанные ошибки
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка обработки: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Внутренняя ошибка сервера при обработке изображения"
+        )
