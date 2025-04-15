@@ -4,10 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="Fake Face Detector API",
-    description="API for detecting fake faces with YOLO model",
-    docs_url= None,
-    redoc_url=None,
-    openapi_url=None
+    description="API for detecting fake faces with YOLO model"
 )
 app.include_router(router=router, prefix='/api')
 
