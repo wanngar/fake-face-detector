@@ -1,11 +1,10 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, APIRouter
+from fastapi import UploadFile, File, HTTPException, APIRouter
 from fastapi.responses import JSONResponse
 from PIL import Image, UnidentifiedImageError
 import io
 import numpy as np
 from typing import Dict
 from .model import FaceDetector
-from time import perf_counter
 
 router = APIRouter(tags=['Model'])
 
@@ -36,30 +35,7 @@ async def predict(file: UploadFile = File(...)) -> JSONResponse:
             HTTPException: 400 если файл не изображение/большой размер
             HTTPException: 500 при внутренних ошибках обработки
 
-        Example:
-            >>> Успешный ответ:
-            {
-                "status": "success",
-                "result": {
-                    "class": "fake",
-                    "prob": "99.95%"
-                }
-            }
-
-            >>> Ответ с ошибкой:
-            {
-                "status": "error",
-                "error": "Файл должен быть изображением"
-            }
         """
-    start_time = perf_counter()
-    # Проверка типа файла
-    if file.content_type not in ["image/jpeg", "image/png"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Поддерживаются только JPEG/PNG изображения"
-        )
-
     try:
         # Чтение и проверка размера файла
         image_bytes = await file.read()
@@ -96,12 +72,10 @@ async def predict(file: UploadFile = File(...)) -> JSONResponse:
 
         # Обработка изображения моделью
         detections = detector.img_predict(image_np)
-        processing_time = perf_counter() - start_time
         return JSONResponse(
             content={
                 "status": "success",
                 "result": detections,
-                "processing_time_sec": round(processing_time, 3)
             }
         )
 
@@ -112,4 +86,3 @@ async def predict(file: UploadFile = File(...)) -> JSONResponse:
             status_code=500,
             detail="Внутренняя ошибка сервера при обработке изображения"
         )
-
