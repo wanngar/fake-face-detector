@@ -1,12 +1,12 @@
 # Fake Face Detector API
-API for detecting fake faces using YOLOv8.
+API for detecting fake faces using YOLOv11
 The project is packaged in a Docker container for easy deployment.
 
 
 
-## Features
-- YOLOv8 model for face detection
-- FastAPI with automatic Swagger documentation
+## Tech Stack
+- YOLOv11 model for face detection
+- FastAPI 
 
 
 ## Requirements
